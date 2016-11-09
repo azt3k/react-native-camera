@@ -981,11 +981,26 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
 - (void)setCaptureQuality:(NSString *)quality
 {
     if (quality) {
+        
+        // restart?
+        bool restart = self.session.isRunning;
+        
+        // stop if it was running
+        if (restart) {
+          [self.session stopRunning];
+        }
+        
+        // reconfig
         [self.session beginConfiguration];
         if ([self.session canSetSessionPreset:quality]) {
             self.session.sessionPreset = quality;
         }
         [self.session commitConfiguration];
+        
+        // restart if it was running
+        if (restart) {
+          [self.session startRunning];
+        }
     }
 }
 
