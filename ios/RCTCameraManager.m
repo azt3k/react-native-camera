@@ -29,6 +29,7 @@ RCT_EXPORT_MODULE();
 
 - (UIView *)view
 {
+  self.configuring = false;
   self.session = [AVCaptureSession new];
   #if !(TARGET_IPHONE_SIMULATOR)
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
@@ -186,6 +187,7 @@ RCT_CUSTOM_VIEW_PROPERTY(type, NSInteger, RCTCamera) {
       }
 
       [self.session beginConfiguration];
+      self.configuring = true;
 
       [self.session removeInput:self.videoCaptureDeviceInput];
 
@@ -204,6 +206,7 @@ RCT_CUSTOM_VIEW_PROPERTY(type, NSInteger, RCTCamera) {
       }
 
       [self.session commitConfiguration];
+      self.configuring = false;
     });
   }
   [self initializeCaptureSessionInput:AVMediaTypeVideo];
@@ -428,8 +431,10 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
         [strongSelf.session startRunning];
       });
     }]];
-
-    [self.session startRunning];
+    
+    if (self.configuring == false) {
+      [self.session startRunning];
+    }
   });
 }
 
@@ -438,10 +443,15 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
   return;
 #endif
   dispatch_async(self.sessionQueue, ^{
+      
     self.camera = nil;
     [self.previewLayer removeFromSuperlayer];
+    
     [self.session commitConfiguration];
+    self.configuring = false;
+      
     [self.session stopRunning];
+    
     for(AVCaptureInput *input in self.session.inputs) {
       [self.session removeInput:input];
     }
@@ -464,6 +474,7 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
     }
 
     [self.session beginConfiguration];
+    self.configuring = true;
 
     NSError *error = nil;
     AVCaptureDevice *captureDevice;
@@ -503,6 +514,7 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
     }
 
     [self.session commitConfiguration];
+    self.configuring = false;
   });
 }
 
@@ -992,10 +1004,15 @@ didFinishRecordingToOutputFileAtURL:(NSURL *)outputFileURL
         
         // reconfig
         [self.session beginConfiguration];
+        
+        self.configuring = true;
+        
         if ([self.session canSetSessionPreset:quality]) {
             self.session.sessionPreset = quality;
         }
+        
         [self.session commitConfiguration];
+        self.configuring = false;
         
         // restart if it was running
         if (restart) {
