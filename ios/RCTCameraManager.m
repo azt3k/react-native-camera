@@ -427,14 +427,24 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
     [self setRuntimeErrorHandlingObserver:[NSNotificationCenter.defaultCenter addObserverForName:AVCaptureSessionRuntimeErrorNotification object:self.session queue:nil usingBlock:^(NSNotification *note) {
       RCTCameraManager *strongSelf = weakSelf;
       dispatch_async(strongSelf.sessionQueue, ^{
+        
+        // make sure the configuration is committed prior to starting
+        if (self.configuring == true) {
+          [self.session commitConfiguration];
+        }
+        
         // Manually restarting the session since it must have been stopped due to an error.
         [strongSelf.session startRunning];
       });
     }]];
     
-    if (self.configuring == false) {
-      [self.session startRunning];
+    // make sure the configuration is committed prior to starting
+    if (self.configuring == true) {
+      [self.session commitConfiguration];
     }
+      
+    [self.session startRunning];
+
   });
 }
 
@@ -564,7 +574,12 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
       [self saveImage:imageData target:target metadata:nil resolve:resolve reject:reject];
 #else
       [[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] setVideoOrientation:orientation];
-
+      
+      // sometimes we get to here with no running session
+      if (self.session.isRunning == false) {
+        [self.session startRunning];
+      }
+      
       [self.stillImageOutput captureStillImageAsynchronouslyFromConnection:[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
 
         if (imageDataSampleBuffer) {
@@ -572,6 +587,7 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
 
           // Create image source
           CGImageSourceRef source = CGImageSourceCreateWithData((CFDataRef)imageData, NULL);
+            
           //get all the metadata in the image
           NSMutableDictionary *imageMetadata = [(NSDictionary *) CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source, 0, NULL)) mutableCopy];
 
