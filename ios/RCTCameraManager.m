@@ -429,8 +429,8 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
       dispatch_async(strongSelf.sessionQueue, ^{
         
         // make sure the configuration is committed prior to starting
-        if (self.configuring == true) {
-          [self.session commitConfiguration];
+        if (strongSelf.configuring == true) {
+          [strongSelf.session commitConfiguration];
         }
         
         // Manually restarting the session since it must have been stopped due to an error.
@@ -574,6 +574,11 @@ RCT_EXPORT_METHOD(hasFlash:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRej
       [self saveImage:imageData target:target metadata:nil resolve:resolve reject:reject];
 #else
       [[self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo] setVideoOrientation:orientation];
+      
+      // always do this before calling start
+      if (self.configuring == true) {
+          [self.session commitConfiguration];
+      }
       
       // sometimes we get to here with no running session
       if (self.session.isRunning == false) {
