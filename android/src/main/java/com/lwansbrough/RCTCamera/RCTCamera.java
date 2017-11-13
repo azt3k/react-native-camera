@@ -327,7 +327,15 @@ public class RCTCamera {
         // TODO: take in account the _orientation prop
 
         setAdjustedDeviceOrientation(rotation);
-        camera.setDisplayOrientation(displayRotation);
+
+        try {
+              camera.stopPreview();
+              camera.setDisplayOrientation(displayRotation);
+              camera.startPreview();
+          } catch(e) {
+              // at least get the rotation for the error
+              throw new Exception("Debug: rotation " + rotation + " display rotation " + displayRotation, e);
+          }
 
         Camera.Parameters parameters = camera.getParameters();
         parameters.setRotation(cameraInfo.rotation);
